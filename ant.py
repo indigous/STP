@@ -3,18 +3,54 @@ __author__ = 'Inigo'
 from lxml import etree
 import os
 import numpy as np
+import random
 
 
 class Ant():
-    def __init__(self):
+    def __init__(self, g):
         self.tour_length = 0
         self.path = []
         self.current_node = ''
+        self.graph = g
+        self.roulette = []
         self.visited = []
+        self.not_visited = range(self.graph.n)
 
-    def choose_node(self):
-        for i in self.memory:
-            self.memory[i][0] = self.heuristic(self.current_node)
+    def roulette_wheel(self):
+        self.roulette = []
+        temp = 0
+        for i in self.not_visited:
+            self.roulette.append(temp + self.graph.choice_info[self.path[-1]][i])
+            temp += self.graph.choice_info[self.path[-1]][i]
+        j = random.randrange(self.roulette[-1])
+        ind = 0
+        for i in self.roulette:
+            if j < i:
+                return self.not_visited[ind]
+            else:
+                ind += 1
+
+    def tour_distance(self):
+        length = 0
+        for i in range(self.graph.n):
+            length += self.graph.distance_matrix[self.path[i]][self.path[i+1]]
+        return length
+
+    def construct_tour(self):
+        ind = random.randrange(self.graph.n)
+        self.path = [ind]
+        self.visited.append(ind)
+        self.not_visited.remove(ind)
+        while len(self.not_visited) > 0:
+            next_city = self.roulette_wheel()
+            self.path.append(next_city)
+            self.visited.append(next_city)
+            self.not_visited.remove(next_city)
+        self.path.append(ind)
+        self.tour_length = self.tour_distance()
+        print self.path
+        print self.tour_length
+
 
 class Graph():
     def __init__(self, fname):
@@ -25,7 +61,7 @@ class Graph():
         self.n = len(self.vertices)
         self.distance_matrix = self.create_distance_matrix()
         self.pheromone_matrix = np.zeros((self.n, self.n))
-        self.choice_info = np.zeros((self.n, self.n))
+        self.choice_info = np.ones((self.n, self.n))
 
     def create_distance_matrix(self):
         m = np.zeros((self.n, self.n))
@@ -75,3 +111,5 @@ if __name__ == "__main__":
 
     fname = get_file()
     g = Graph(fname)
+    a = Ant(g)
+    a.construct_tour()
